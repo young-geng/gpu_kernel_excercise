@@ -1,0 +1,13 @@
+*.i
+*.ii
+*.gpu
+*.ptx
+*.cubin
+*.fatbin
+
+
+# Profiling output
+*_profile.txt
+*.nsys-rep
+
+/vector_add/vector_add
