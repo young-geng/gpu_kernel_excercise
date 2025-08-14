@@ -11,3 +11,4 @@
 *.nsys-rep
 
 /vector_add/vector_add
+/vector_reduce/vector_reduce
