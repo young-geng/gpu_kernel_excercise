@@ -12,3 +12,7 @@
 
 /vector_add/vector_add
 /vector_reduce/vector_reduce
+/matrix_reduce/matrix_reduce
+/matrix_transpose/matrix_transpose_v1
+/matrix_transpose/matrix_transpose_v2
+/matrix_transpose/matrix_transpose_v3

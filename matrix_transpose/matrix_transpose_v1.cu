@@ -1,0 +1,88 @@
+#include <stdio.h>
+#include <cassert>
+#include <cstdlib>
+#include <cmath>
+#include <cooperative_groups.h>
+
+// error checking macro
+#define cudaCheckErrors(msg) \
+    do { \
+        cudaError_t __err = cudaGetLastError(); \
+        if (__err != cudaSuccess) { \
+            fprintf(stderr, "Fatal error: %s (%s at %s:%d)\n", \
+                msg, cudaGetErrorString(__err), \
+                __FILE__, __LINE__); \
+            fprintf(stderr, "*** FAILED - ABORTING\n"); \
+            exit(1); \
+        } \
+    } while (0)
+
+#define ceil_div(a, b) ((a + b - 1) / b)
+
+
+const int DSIZE = 16 * 1024; // 1GB of data
+const int BLOCK_SIZE = 32;
+const int GRID_SIZE = 32;
+
+
+__global__ void matrix_reduce(const float *input, float *output, int ds) {
+  for (int col = blockIdx.x * blockDim.x + threadIdx.x; col < ds; col += gridDim.x * blockDim.x) {
+    for (int row = blockIdx.y * blockDim.y + threadIdx.y; row < ds; row += gridDim.y * blockDim.y) {
+      output[col * ds + row] = input[row * ds + col];
+    }
+  }
+
+}
+
+int main(){
+  float *host_matrix = new float[DSIZE * DSIZE];
+  float *host_output = new float[DSIZE * DSIZE];
+  float *answer = new float[DSIZE * DSIZE];
+  float *device_matrix, *device_output;
+  printf("Initializing data.\n");
+  for (int i = 0; i < DSIZE; i++){
+    for(int j = 0; j < DSIZE; j++) {
+      host_matrix[i * DSIZE + j] = rand()/(float)RAND_MAX / sqrt(DSIZE);
+      answer[j * DSIZE + i] = host_matrix[i * DSIZE + j];
+    }
+  }
+  printf("Allocating and transferring memory.\n");
+  cudaMalloc(&device_matrix, DSIZE*DSIZE*sizeof(float));
+  cudaMalloc(&device_output, DSIZE*DSIZE*sizeof(float));
+
+  cudaCheckErrors("cudaMalloc failure"); // error checking
+  cudaMemcpy(device_matrix, host_matrix, DSIZE*DSIZE*sizeof(float), cudaMemcpyHostToDevice);
+  cudaCheckErrors("cudaMemcpy H2D failure");
+
+  printf("Launching kernel.\n");
+
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+
+  cudaEventRecord(start);
+  dim3 grid(GRID_SIZE, GRID_SIZE, 1);
+  dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
+  matrix_reduce<<<grid, block>>>(device_matrix, device_output, DSIZE);
+
+  cudaEventRecord(stop);
+  cudaCheckErrors("kernel launch failure");
+  cudaMemcpy(host_output, device_output, DSIZE*DSIZE*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaCheckErrors("kernel execution failure or cudaMemcpy H2D failure");
+
+  printf("Checking answers......");
+  for (int i = 0; i < DSIZE; i++){
+    for(int j = 0; j < DSIZE; j++) {
+      assert(answer[i * DSIZE + j] == host_output[i * DSIZE + j]);
+    }
+  }
+  printf(" passed!\n");
+
+  cudaEventSynchronize(stop);
+  float milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  float memory_gbps = 2 * float(DSIZE) * float(DSIZE) * 4 / 1024 / 1024 / 1024 / (milliseconds / 1000);
+  printf("Time: %f ms, Memory Bandwidth: %f GB/s\n", milliseconds, memory_gbps);
+  return 0;
+}
+
