@@ -20,12 +20,12 @@
 #define ceil_div(a, b) ((a + b - 1) / b)
 
 
-const int DSIZE = 16 * 1024; // 1GB of data
+const int DSIZE = 32 * 1024; // 1GB of data
 const int BLOCK_SIZE = 32;
 const int GRID_SIZE = 32;
 
 
-__global__ void matrix_reduce(const float *input, float *output, int ds) {
+__global__ void matrix_transpose(const float *input, float *output, int ds) {
   for (int col = blockIdx.x * blockDim.x + threadIdx.x; col < ds; col += gridDim.x * blockDim.x) {
     for (int row = blockIdx.y * blockDim.y + threadIdx.y; row < ds; row += gridDim.y * blockDim.y) {
       output[col * ds + row] = input[row * ds + col];
@@ -60,10 +60,11 @@ int main(){
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
 
-  cudaEventRecord(start);
   dim3 grid(GRID_SIZE, GRID_SIZE, 1);
   dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
-  matrix_reduce<<<grid, block>>>(device_matrix, device_output, DSIZE);
+
+  cudaEventRecord(start);
+  matrix_transpose<<<grid, block>>>(device_matrix, device_output, DSIZE);
 
   cudaEventRecord(stop);
   cudaCheckErrors("kernel launch failure");
