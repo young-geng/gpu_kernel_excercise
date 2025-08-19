@@ -2,7 +2,8 @@
 #include <cassert>
 #include <cstdlib>
 #include <cmath>
-#include <cooperative_groups.h>
+#include <omp.h>
+#include <random>
 
 // error checking macro
 #define cudaCheckErrors(msg) \
@@ -40,10 +41,20 @@ int main(){
   float *answer = new float[DSIZE * DSIZE];
   float *device_matrix, *device_output;
   printf("Initializing data.\n");
-  for (int i = 0; i < DSIZE; i++){
-    for(int j = 0; j < DSIZE; j++) {
-      host_matrix[i * DSIZE + j] = rand()/(float)RAND_MAX / sqrt(DSIZE);
-      answer[j * DSIZE + i] = host_matrix[i * DSIZE + j];
+
+  printf("Filling in random data.\n");
+  #pragma omp parallel
+  {
+    std::random_device rd;
+    std::mt19937 gen(rd() + omp_get_thread_num()); // Seed with thread ID
+    std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+
+    #pragma omp for collapse(2)
+    for (int i = 0; i < DSIZE; i++) {
+      for (int j = 0; j < DSIZE; j++) {
+        host_matrix[i * DSIZE + j] = dis(gen);
+        answer[j * DSIZE + i] = host_matrix[i * DSIZE + j];
+      }
     }
   }
   printf("Allocating and transferring memory.\n");

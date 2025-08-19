@@ -3,7 +3,7 @@
 .PHONY: clean test_matrix_transpose_v1 profile_matrix_transpose_v1 test_matrix_transpose_v2 profile_matrix_transpose_v2 test_matrix_transpose_v3 profile_matrix_transpose_v3
 
 matrix_transpose_v1: matrix_transpose_v1.cu
-	nvcc -O3 -o matrix_transpose_v1 matrix_transpose_v1.cu
+	nvcc -Xcompiler -fopenmp -O3 -o matrix_transpose_v1 matrix_transpose_v1.cu
 
 test_matrix_transpose_v1: matrix_transpose_v1
 	./matrix_transpose_v1
@@ -13,7 +13,7 @@ profile_matrix_transpose_v1: matrix_transpose_v1
 
 
 matrix_transpose_v2: matrix_transpose_v2.cu
-	nvcc -O3 -o matrix_transpose_v2 matrix_transpose_v2.cu
+	nvcc -Xcompiler -fopenmp -O3 -o matrix_transpose_v2 matrix_transpose_v2.cu
 
 test_matrix_transpose_v2: matrix_transpose_v2
 	./matrix_transpose_v2
@@ -23,7 +23,7 @@ profile_matrix_transpose_v2: matrix_transpose_v2
 
 
 matrix_transpose_v3: matrix_transpose_v3.cu
-	nvcc -O3 -o matrix_transpose_v3 matrix_transpose_v3.cu
+	nvcc -Xcompiler -fopenmp -O3 -o matrix_transpose_v3 matrix_transpose_v3.cu
 
 test_matrix_transpose_v3: matrix_transpose_v3
 	./matrix_transpose_v3
