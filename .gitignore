@@ -172,11 +172,11 @@ cython_debug/
 *_profile.txt
 *.nsys-rep
 
-/vector_add/vector_add
-/vector_reduce/vector_reduce
-/matrix_reduce/matrix_reduce
-/matrix_transpose/matrix_transpose_v1
-/matrix_transpose/matrix_transpose_v2
-/matrix_transpose/matrix_transpose_v3
+/cuda/vector_add/vector_add
+/cuda/vector_reduce/vector_reduce
+/cuda/matrix_reduce/matrix_reduce
+/cuda/matrix_transpose/matrix_transpose_v1
+/cuda/matrix_transpose/matrix_transpose_v2
+/cuda/matrix_transpose/matrix_transpose_v3
 
-/matrix_multiplication/matmul_v1
+/cuda/matrix_multiplication/matmul_v1

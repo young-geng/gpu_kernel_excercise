@@ -41,8 +41,6 @@ int main(){
   float *answer = new float[DSIZE * DSIZE];
   float *device_matrix, *device_output;
   printf("Initializing data.\n");
-
-  printf("Filling in random data.\n");
   #pragma omp parallel
   {
     std::random_device rd;

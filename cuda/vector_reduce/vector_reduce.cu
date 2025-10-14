@@ -110,7 +110,6 @@ int main(){
   cudaCheckErrors("kernel execution failure or cudaMemcpy H2D failure");
 
   printf("Host answer: %f, device output: %f\n", (float)answer, host_output[0]);
-  printf("Theoretical answer: %f\n", DSIZE * 2.0);
 
   cudaEventSynchronize(stop);
   float milliseconds = 0;
