@@ -1,13 +1,13 @@
 import os
 
 from functools import partial
-import timeit
 import numpy as np
 import jax
 import jax.numpy as jnp
 
 import jax.experimental.pallas as pl
 import jax.experimental.pallas.mosaic_gpu as plgpu
+from jax.experimental.mosaic.gpu import profiler
 
 
 def matmul_kernel(a_ref, b_ref, o_ref):
@@ -41,8 +41,8 @@ def pallas_matmul(
 
 
 if __name__ == "__main__":
-    size = 1024 * 16
-    m, k, n = size, size, size
+    m, k, n = 4096, 8192, 4096
+    matmul_tflop = 2 * m * n * k / 1e12
     k1, k2 = jax.random.split(jax.random.key(0), 2)
     x = jax.random.normal(k1, (m, k), dtype=jnp.bfloat16).block_until_ready()
     y = jax.random.normal(k2, (k, n), dtype=jnp.bfloat16).block_until_ready()
@@ -50,32 +50,26 @@ if __name__ == "__main__":
     # block_size = (64, 256, 16)
     block_size = (128, 128, 128)
 
-    def run_matmul_pallas():
-        pallas_matmul(x, y, block_size=block_size).block_until_ready()
+    jax_matmul = jax.jit(jnp.dot)
 
-    def run_matmul_jax():
-        jax.jit(jnp.dot)(x, y).block_until_ready()
-
-    repeat = 10
+    repeat = 100
 
     # Warmup
     for _ in range(repeat):
-        run_matmul_pallas()
-        run_matmul_jax()
+        jax_matmul(x, y).block_until_ready()
+        pallas_matmul(x, y, block_size=block_size).block_until_ready()
 
-    time = timeit.timeit(
-        "run_matmul_pallas()",
-        number=repeat,
-        globals=globals(),
-    ) / repeat
-    performance = m * n * k / time / 1e12
-    print(f"pallas matmul {size=} {time=:.3f}s {performance=:.2f} TFLOPS")
+    out, runtimes_ms = profiler.measure(
+        partial(pallas_matmul, block_size=block_size), iterations=repeat,
+    )(x, y)
+    runtime = np.median(runtimes_ms) / 1000
+    performance = matmul_tflop / runtime
+    print(f"pallas matmul {(m, k, n)=} {runtime=:.3f}s {performance=:.2f} TFLOPS")
 
+    out, runtimes_ms = profiler.measure(
+        jax_matmul, iterations=repeat,
+    )(x, y)
+    runtime = np.median(runtimes_ms) / 1000
+    performance = matmul_tflop / runtime
+    print(f"jax matmul {(m, k, n)=} {runtime=:.3f}s {performance=:.2f} TFLOPS")
 
-    time = timeit.timeit(
-        "run_matmul_jax()",
-        number=repeat,
-        globals=globals(),
-    ) / repeat
-    performance = m * n * k / time / 1e12
-    print(f"jax matmul {size=} {time=:.3f}s {performance=:.2f} TFLOPS")
