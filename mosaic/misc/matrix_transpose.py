@@ -50,13 +50,13 @@ if __name__ == "__main__":
     out, runtimes_ms = profiler.measure(
         partial(pallas_transpose, block_size=block_size), iterations=repeat,
     )(x)
-    runtime = np.median(runtimes_ms) / 1000
-    bandwidth = data_size_gb / runtime
-    print(f"pallas transpose {(m, k)=} {runtime=:.3f}s {bandwidth=:.2f} GB/s")
+    runtime = np.median(runtimes_ms)
+    bandwidth = data_size_gb / runtime * 1e3
+    print(f"pallas transpose {(m, k)=} {runtime=:.3f}ms {bandwidth=:.2f} GB/s")
 
     out, runtimes_ms = profiler.measure(
         jax_transpose, iterations=repeat,
     )(x)
-    runtime = np.median(runtimes_ms) / 1000
-    bandwidth = data_size_gb / runtime
-    print(f"jax transpose {(m, k)=} {runtime=:.3f}s {bandwidth=:.2f} GB/s")
+    runtime = np.median(runtimes_ms)
+    bandwidth = data_size_gb / runtime * 1e3
+    print(f"jax transpose {(m, k)=} {runtime=:.3f}ms {bandwidth=:.2f} GB/s")
