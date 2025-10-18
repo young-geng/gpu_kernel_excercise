@@ -72,37 +72,36 @@ def pallas_matmul(
                 )
 
 
-            @pl.when(thread_id == 1)
-            def mma_thread():
-                for k in range(x.shape[1] // block_size[1]):
-                    buffer_id = k % 2
+        @pl.when(thread_id == 1)
+        def mma_thread():
+            for k in range(x.shape[1] // block_size[1]):
+                buffer_id = k % 2
 
-                    # Wait for data to be ready at buffer id
-                    plgpu.barrier_wait(smem_a_barrier_ref.at[buffer_id])
-                    plgpu.barrier_wait(smem_b_barrier_ref.at[buffer_id])
-                    plgpu.tcgen05_mma(
-                        tmem_acc_ref,
-                        smem_a_ref.at[buffer_id, ...],
-                        smem_b_ref.at[buffer_id, ...],
-                        tc_barrier_ref.at[buffer_id],
-                        accumulate=k > 0
-                    )
+                # Wait for data to be ready at buffer id
+                plgpu.barrier_wait(smem_a_barrier_ref.at[buffer_id])
+                plgpu.barrier_wait(smem_b_barrier_ref.at[buffer_id])
+                plgpu.tcgen05_mma(
+                    tmem_acc_ref,
+                    smem_a_ref.at[buffer_id, ...],
+                    smem_b_ref.at[buffer_id, ...],
+                    tc_barrier_ref.at[buffer_id],
+                    accumulate=k > 0
+                )
+
+            plgpu.tcgen05_commit_arrive(tc_done_barrier_ref)
 
 
-                plgpu.tcgen05_commit_arrive(tc_done_barrier_ref)
+        plgpu.barrier_wait(tc_done_barrier_ref)
+        smem_acc_ref[...] = plgpu.async_load_tmem(tmem_acc_ref).astype(o_ref.dtype)
+        plgpu.wait_load_tmem()
+        plgpu.commit_smem()
 
-
-            plgpu.barrier_wait(tc_done_barrier_ref)
-            smem_acc_ref[...] = plgpu.async_load_tmem(tmem_acc_ref).astype(o_ref.dtype).astype(o_ref.dtype)
-            plgpu.wait_load_tmem()
-            plgpu.commit_smem()
-
-            o_ref_tile = o_ref.at[
-                pl.ds(m_index * block_size[0], block_size[0]),
-                pl.ds(n_index * block_size[2], block_size[2])
-            ]
-            plgpu.copy_smem_to_gmem(smem_acc_ref, o_ref_tile)
-            plgpu.wait_smem_to_gmem(0)
+        o_ref_tile = o_ref.at[
+            pl.ds(m_index * block_size[0], block_size[0]),
+            pl.ds(n_index * block_size[2], block_size[2])
+        ]
+        plgpu.copy_smem_to_gmem(smem_acc_ref, o_ref_tile)
+        plgpu.wait_smem_to_gmem(0)
 
     return matmul_kernel((x, y))
 
