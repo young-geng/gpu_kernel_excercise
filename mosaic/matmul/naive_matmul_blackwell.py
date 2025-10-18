@@ -14,12 +14,14 @@ from jax.experimental.mosaic.gpu import profiler
 def pallas_matmul(
     x: jax.Array,
     y: jax.Array,
-    block_size=(128, 256, 128),
+    block_size=(128, 128, 128),
 ):
 
+    swizzle = plgpu.find_swizzle(block_size[1] * jnp.dtype(x.dtype).itemsize * 8)
+    swizzle_elems = swizzle // jnp.dtype(x.dtype).itemsize
     smem_transforms = (
-        plgpu.TilingTransform((8, 128 // 2)),
-        plgpu.SwizzleTransform(128)
+        plgpu.TilingTransform((8, swizzle_elems)),
+        plgpu.SwizzleTransform(swizzle)
     )
     @partial(
         plgpu.kernel,
@@ -77,9 +79,6 @@ if __name__ == "__main__":
     x = jax.random.normal(k1, (m, k), dtype=jnp.bfloat16).block_until_ready()
     y = jax.random.normal(k2, (k, n), dtype=jnp.bfloat16).block_until_ready()
 
-    # block_size = (64, 256, 16)
-    block_size = (128, 128, 128)
-
     jax_matmul = jax.jit(jnp.dot)
 
     repeat = 100
@@ -87,10 +86,10 @@ if __name__ == "__main__":
     # Warmup
     for _ in range(repeat):
         jax_matmul(x, y).block_until_ready()
-        pallas_matmul(x, y, block_size=block_size).block_until_ready()
+        pallas_matmul(x, y).block_until_ready()
 
     out, runtimes_ms = profiler.measure(
-        partial(pallas_matmul, block_size=block_size), iterations=repeat,
+        partial(pallas_matmul), iterations=repeat,
     )(x, y)
     runtime = np.median(runtimes_ms) / 1000
     performance = matmul_tflop / runtime
