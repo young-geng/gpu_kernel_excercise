@@ -55,6 +55,7 @@ def pallas_matmul(
             plgpu.barrier_wait(smem_barrier_ref.at[0])
             plgpu.barrier_wait(smem_barrier_ref.at[1])
             plgpu.wgmma(acc_ref, smem_a_ref, smem_b_ref)
+            plgpu.wgmma_wait(0)
 
         plgpu.wgmma_wait(0)
         smem_acc_ref[...] = acc_ref[...].astype(o_ref.dtype)
